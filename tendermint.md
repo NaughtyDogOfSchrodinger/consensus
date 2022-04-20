@@ -10,9 +10,9 @@
 
 在本文中，我们描述了一种新的拜占庭容错共识算法，它是称为 [Tendermint](https://github.com/tendermint/tendermint) 的 BFT SMR 平台的核心。Tendermint 平台包括一个用 Go 编写的高性能 BFT SMR 实现、一个用于在共识之上构建任意确定性应用程序的灵活接口，以及一套用于部署和管理的工具。
 
-Tendermint 共识算法的灵感来自 PBFT SMR 算法 [[8]]( https://www.usenix.org/legacy/events/osdi99/full_papers/banga/banga.pdf?ref=https://githubhelp.com ) 和用于验证故障的 DLS 算法（来自 [[6]]( https://groups.csail.mit.edu/tds/papers/Lynch/jacm88.pdf ) 的算法 2）。与 DLS 算法类似，Tendermint 以轮次(round)进行，其中每一轮都有一个专门的提议者（也称为协调者或领导者），并且作为正常处理的一部分，一个进程会进入新一轮（不仅是在提议者有缺陷或被怀疑为PBFT 中的足够多的进程出错）。每一轮的通信模式与 PBFT 的“正常”情况非常相似。因此，在优选的条件下（正确的提议者，正确的进程之间及时可靠的通信），Tendermint 决定分三个通信步骤（与 PBFT 相同）。  
+Tendermint 共识算法的灵感来自 PBFT SMR 算法 [[8]]( https://www.usenix.org/legacy/events/osdi99/full_papers/banga/banga.pdf?ref=https://githubhelp.com ) 和用于验证故障的 DLS 算法（来自 [[6]]( https://groups.csail.mit.edu/tds/papers/Lynch/jacm88.pdf ) 的算法 2）。与 DLS 算法类似，Tendermint 以轮次(round)进行，其中每一轮都有一个专门的提议者（也称为协调者或领导者），并且作为正常处理的一部分，一个进程会进入新一轮（不仅是在提议者有缺陷或PBFT中被怀疑为的足够多的进程出错的情况）。每一轮的通信模式与 PBFT 的**正常**情况非常相似。因此，在优选的条件下（正确的提议者，正确的进程之间及时可靠的通信），Tendermint 决定分三个通信步骤（与 PBFT 相同）。  
 
-Tendermint 共识算法的主要创新和贡献是一种新的终止机制。如 [[9]]( https://infoscience.epfl.ch/record/158894/files/WIC.pdf )、[[10]](https://infoscience.epfl.ch/record/146821/files/bcc-paper.pdf) 中所述，用于部分同步系统模型（例如 PBFT  [[8]]( https://www.usenix.org/legacy/events/osdi99/full_papers/banga/banga.pdf?ref=https://githubhelp.com ) 、[[6]]( https://groups.csail.mit.edu/tds/papers/Lynch/jacm88.pdf )、[[11]]( https://www.cs.cornell.edu/lorenzo/papers/Martin06Fast.pdf )）的现有 BFT 共识（和 SMR）算法通常依赖于图 1 为终止。图 1 说明了在进程开始新一轮时提议者更改期间交换的消息。它保证最终（即在某个全球稳定时间，GST 之后），存在一个具有正确提议者的轮次，这将使系统进入单一配置。直观地说，在提议的值被所有正确进程接受并且正确进程之间的通信及时可靠的一轮中，所有正确进程决定。
+Tendermint 共识算法的主要创新和贡献是一种新的***Termination***机制。如 [[9]]( https://infoscience.epfl.ch/record/158894/files/WIC.pdf )、[[10]](https://infoscience.epfl.ch/record/146821/files/bcc-paper.pdf) 中所述，用于部分同步系统模型（例如 PBFT  [[8]]( https://www.usenix.org/legacy/events/osdi99/full_papers/banga/banga.pdf?ref=https://githubhelp.com ) 、[[6]]( https://groups.csail.mit.edu/tds/papers/Lynch/jacm88.pdf )、[[11]]( https://www.cs.cornell.edu/lorenzo/papers/Martin06Fast.pdf )）的现有 BFT 共识（和 SMR）算法通常依赖于图 1 为终止。图 1 说明了在进程开始新一轮时提议者更改期间交换的消息。它保证最终（即在某个全球稳定时间，GST 之后），存在一个具有正确提议者的轮次，这将使系统进入单一配置。直观地说，在提议的值被所有正确进程接受并且正确进程之间的通信及时可靠的一轮中，所有正确进程决定。
 
 
 ![figure 1](img/1.png)
@@ -30,7 +30,7 @@ Tendermint 共识算法的主要创新和贡献是一种新的终止机制。如
 
 在这两种情况下，在我们的系统模型中使用这种机制（即基于 *gossip* 的网络上的大量节点）将具有很高的通信复杂性，并且会随着进程数量的增加而增加：在第一种情况下，因为发送的消息取决于进程，在第二种情况下，作为值（事务区块）由每个进程发送。第一步中收到的消息集通常搭载在提议消息上（在 <span id="1">图 1</span> 中用 ![]( http://latex.codecogs.com/svg.latex?[v_1.._4]) 表示），以证明所选值 ![](http://latex.codecogs.com/svg.latex?x) 的选择是正确的。请注意，发送此消息的数量也不会随系统中的进程数量而变化。
 
-我们为 Tendermint 设计了一种新颖的终止机制，它更适合我们考虑的系统模型。它不需要额外的通信（即不需要发送新消息，也不需要在现有消息上捎带信息），它完全基于与 PBFT [[8]]( https://www.usenix.org/legacy/events/osdi99/full_papers/banga/banga.pdf?ref=https://githubhelp.com ) 中的正常情况非常相似的通信模式。因此，在 Tendermint 中只有一种执行模式，即正常模式和恢复模式之间没有分离，这在其他类似 PBFT 的协议中也是如此（例如，[[8]]( https://www.usenix.org/legacy/events/osdi99/full_papers/banga/banga.pdf?ref=https://githubhelp.com )、[[12]]( https://www.di.fc.ul.pt/~bessani/publications/srds09-spinning.pdf ) 或 [[13]]( https://www.usenix.org/legacy/event/nsdi09/tech/full_papers/clement/clement.pdf )）。我们相信这使 Tendermint 更易于理解和正确实施。  
+我们为 Tendermint 设计了一种新颖的***Termination***机制，它更适合我们考虑的系统模型。它不需要额外的通信（即不需要发送新消息，也不需要在现有消息上捎带信息），它完全基于与 PBFT [[8]]( https://www.usenix.org/legacy/events/osdi99/full_papers/banga/banga.pdf?ref=https://githubhelp.com ) 中的正常情况非常相似的通信模式。因此，在 Tendermint 中只有一种执行模式，即正常模式和恢复模式之间没有分离，这在其他类似 PBFT 的协议中也是如此（例如，[[8]]( https://www.usenix.org/legacy/events/osdi99/full_papers/banga/banga.pdf?ref=https://githubhelp.com )、[[12]]( https://www.di.fc.ul.pt/~bessani/publications/srds09-spinning.pdf ) 或 [[13]]( https://www.usenix.org/legacy/event/nsdi09/tech/full_papers/clement/clement.pdf )）。我们相信这使 Tendermint 更易于理解和正确实施。  
 
 
 请注意，降低消息复杂性以提高 BFT 共识算法的可扩展性和分散性（进程数量）的正交方法是使用高级密码学（例如 Boneh-Lynn-Shacham (BLS) 签名 [[14]]( https://www.iacr.org/archive/asiacrypt2001/22480516.pdf )），例如在SBFT [[15]]( https://arxiv.org/pdf/1804.01626.pdf )。

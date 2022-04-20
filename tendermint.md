@@ -10,7 +10,7 @@
 
 在本文中，我们描述了一种新的拜占庭容错共识算法，它是称为 [Tendermint](https://github.com/tendermint/tendermint) 的 BFT SMR 平台的核心。Tendermint 平台包括一个用 Go 编写的高性能 BFT SMR 实现、一个用于在共识之上构建任意确定性应用程序的灵活接口，以及一套用于部署和管理的工具。
 
-Tendermint 共识算法的灵感来自 PBFT SMR 算法 [[8]]( https://www.usenix.org/legacy/events/osdi99/full_papers/banga/banga.pdf?ref=https://githubhelp.com ) 和用于验证故障的 DLS 算法（来自 [[6]]( https://groups.csail.mit.edu/tds/papers/Lynch/jacm88.pdf ) 的算法 2）。与 DLS 算法类似，Tendermint 在第 2 轮中进行，其中每一轮都有一个专门的提议者（也称为协调者或领导者），并且作为正常处理的一部分，一个进程会进入新一轮（不仅是在提议者有缺陷或被怀疑为PBFT 中的足够多的进程出错）。每一轮的通信模式与 PBFT 的“正常”情况非常相似。因此，在优选的条件下（正确的提议者，正确的进程之间及时可靠的通信），Tendermint 决定分三个通信步骤（与 PBFT 相同）。  
+Tendermint 共识算法的灵感来自 PBFT SMR 算法 [[8]]( https://www.usenix.org/legacy/events/osdi99/full_papers/banga/banga.pdf?ref=https://githubhelp.com ) 和用于验证故障的 DLS 算法（来自 [[6]]( https://groups.csail.mit.edu/tds/papers/Lynch/jacm88.pdf ) 的算法 2）。与 DLS 算法类似，Tendermint 以轮次(round)进行，其中每一轮都有一个专门的提议者（也称为协调者或领导者），并且作为正常处理的一部分，一个进程会进入新一轮（不仅是在提议者有缺陷或被怀疑为PBFT 中的足够多的进程出错）。每一轮的通信模式与 PBFT 的“正常”情况非常相似。因此，在优选的条件下（正确的提议者，正确的进程之间及时可靠的通信），Tendermint 决定分三个通信步骤（与 PBFT 相同）。  
 
 Tendermint 共识算法的主要创新和贡献是一种新的终止机制。如 [[9]]( https://infoscience.epfl.ch/record/158894/files/WIC.pdf )、[[10]](https://infoscience.epfl.ch/record/146821/files/bcc-paper.pdf) 中所述，用于部分同步系统模型（例如 PBFT  [[8]]( https://www.usenix.org/legacy/events/osdi99/full_papers/banga/banga.pdf?ref=https://githubhelp.com ) 、[[6]]( https://groups.csail.mit.edu/tds/papers/Lynch/jacm88.pdf )、[[11]]( https://www.cs.cornell.edu/lorenzo/papers/Martin06Fast.pdf )）的现有 BFT 共识（和 SMR）算法通常依赖于图 1 为终止。图 1 说明了在进程开始新一轮时提议者更改期间交换的消息。它保证最终（即在某个全球稳定时间，GST 之后），存在一个具有正确提议者的轮次，这将使系统进入单一配置。直观地说，在提议的值被所有正确进程接受并且正确进程之间的通信及时可靠的一轮中，所有正确进程决定。
 

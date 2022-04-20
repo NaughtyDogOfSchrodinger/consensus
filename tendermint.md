@@ -39,13 +39,13 @@ Tendermint 共识算法的主要创新和贡献是一种新的***Termination***�
 ### A. 模型
 我们考虑一个通过交换消息进行通信的进程系统。进程可以是正确的，也可以是错误的，其中一个错误的进程可以以任意方式运行，即我们认为是拜占庭错误。我们假设每个进程都有一定的投票权（进程的投票权可以为 0）。我们模型中的流程不是单个管理域的一部分；因此，我们不能强制所有进程之间的直接网络连接。相反，我们假设每个进程都连接到称为对等点的进程子集，这样所有正确的进程之间都存在间接通信通道。进程之间的通信是使用 *gossip* 协议 [[16]]( http://bitsavers.trailing-edge.com/pdf/xerox/parc/techReports/CSL-89-1_Epidemic_Algorithms_for_Replicated_Database_Maintenance.pdf ) 建立的。
 
-形式上，我们使用部分同步系统模型 [[6]]( https://groups.csail.mit.edu/tds/papers/Lynch/jacm88.pdf ) 的变体对网络通信进行建模：在系统的所有执行中，都有一个界限![]( http://latex.codecogs.com/svg.latex?\bigtriangleup) 和一个即时 ![]( http://latex.codecogs.com/svg.latex?GST )（全局稳定时间），因此 GST 之后正确进程之间的所有通信都是可靠且 ![]( http://latex.codecogs.com/svg.latex?\bigtriangleup ) 及时，即如果正确的进程 ![]( http://latex.codecogs.com/svg.latex?p) 在时间 ![]( http://latex.codecogs.com/svg.latex?t$$\geq$$GST ) 向正确的进程 ![]( http://latex.codecogs.com/svg.latex?q )  发送消息 ![]( http://latex.codecogs.com/svg.latex?m ) ，则 ![]( http://latex.codecogs.com/svg.latex?q )  将在 ![]( http://latex.codecogs.com/svg.latex?t+\bigtriangleup ) 之前收到 ![]( http://latex.codecogs.com/svg.latex?m ) 。除了标准的部分同步系统模型 [[6]]( https://groups.csail.mit.edu/tds/papers/Lynch/jacm88.pdf ) 之外，我们还假设了一个辅助属性来捕捉基于*gossip*的通信性质：
+形式上，我们使用部分同步系统模型 [[6]]( https://groups.csail.mit.edu/tds/papers/Lynch/jacm88.pdf ) 的变体对网络通信进行建模：在系统的所有执行中，都有一个界限![]( http://latex.codecogs.com/svg.latex?\bigtriangleup) 和一个即时 ![]( http://latex.codecogs.com/svg.latex?GST )（全局稳定时间），因此 ![]( http://latex.codecogs.com/svg.latex?GST ) 之后正确进程之间的所有通信都是可靠且 ![]( http://latex.codecogs.com/svg.latex?\bigtriangleup ) 内及时的，即如果正确的进程 ![]( http://latex.codecogs.com/svg.latex?p) 在时间 ![]( http://latex.codecogs.com/svg.latex?t$$\geq$$GST ) 向正确的进程 ![]( http://latex.codecogs.com/svg.latex?q )  发送消息 ![]( http://latex.codecogs.com/svg.latex?m ) ，则 ![]( http://latex.codecogs.com/svg.latex?q )  将在 ![]( http://latex.codecogs.com/svg.latex?t+\bigtriangleup ) 之前收到 ![]( http://latex.codecogs.com/svg.latex?m ) 。除了标准的部分同步系统模型 [[6]]( https://groups.csail.mit.edu/tds/papers/Lynch/jacm88.pdf ) 之外，我们还假设了一个辅助属性来捕捉基于*gossip*的通信性质：
 
 *gossip*通信：如果一个正确的进程 ![]( http://latex.codecogs.com/svg.latex?p )  在时间 ![]( http://latex.codecogs.com/svg.latex?t )  发送了一些消息 ![]( http://latex.codecogs.com/svg.latex?m ) ，那么所有正确的进程都会在 ![]( http://latex.codecogs.com/svg.latex?max\\{t,GST\\}+\bigtriangleup )  之前收到 ![]( http://latex.codecogs.com/svg.latex?m ) 。此外，如果一个正确的进程 ![]( http://latex.codecogs.com/svg.latex?p )  在时间 ![]( http://latex.codecogs.com/svg.latex?t )  收到一些消息 ![]( http://latex.codecogs.com/svg.latex?m ) ，那么所有正确的进程将在 ![]( http://latex.codecogs.com/svg.latex?max\\{t,GST\\}+\bigtriangleup )  之前收到 ![]( http://latex.codecogs.com/svg.latex?m ) 。
 
-边界 ![]( http://latex.codecogs.com/svg.latex?\bigtriangleup )  和 ![]( http://latex.codecogs.com/svg.latex?GST )  是系统参数，为了我们算法的安全性，不需要知道其值。在 ![]( http://latex.codecogs.com/svg.latex?GST )  之后的有限时间内保证算法的终止。在实践中，该算法将在模型的稍弱变体中正常工作，其中系统在（足够长的）好时期（对应于系统可靠和 ![]( http://latex.codecogs.com/svg.latex?\bigtriangleup )  及时的 ![]( http://latex.codecogs.com/svg.latex?GST )  之后的时期）和坏时期（对应于 ![]( http://latex.codecogs.com/svg.latex?GST ) 之前的时期，在此期间系统是异步的并且消息可能会丢失），但考虑 ![]( http://latex.codecogs.com/svg.latex?GST ) 模型可以简化讨论。
+边界 ![]( http://latex.codecogs.com/svg.latex?\bigtriangleup )  和 ![]( http://latex.codecogs.com/svg.latex?GST )  是系统参数，为了我们算法的安全性，不需要知道其值。在 ![]( http://latex.codecogs.com/svg.latex?GST )  之后的有限时间内保证算法的终止。在实践中，该算法将在模型的稍弱变体中正常工作，其中系统在（足够长的）良好状况（对应于在![]( http://latex.codecogs.com/svg.latex?GST )  之后系统可靠和 ![]( http://latex.codecogs.com/svg.latex?\bigtriangleup ) 内及时）和恶劣状况（对应于 ![]( http://latex.codecogs.com/svg.latex?GST ) 之前的时期，在此期间系统是异步的并且消息可能会丢失），但考虑 ![]( http://latex.codecogs.com/svg.latex?GST ) 模型可以简化讨论。
 
-我们假设处理步骤（可能包括发送和接收消息）花费零时间。进程配备了时钟，因此它们可以测量本地超时。由于使用了公钥加密技术，因此假设欺骗/冒充攻击在任何时候都是不可能的，即我们假设所有协议消息都包含数字签名。因此，当正确的进程 ![]( http://latex.codecogs.com/svg.latex?q ) 从其对等方接收到签名消息 ![]( http://latex.codecogs.com/svg.latex?m ) 时，进程 ![]( http://latex.codecogs.com/svg.latex?q ) 可以验证谁是消息 ![]( http://latex.codecogs.com/svg.latex?m ) 的原始发送者以及消息签名是否有效。我们没有在算法的伪代码中明确说明签名验证步骤以提高可读性；我们假设在该级别仅考虑具有有效签名的消息（并且丢弃具有无效签名的消息）。
+我们假设处理步骤（可能包括发送和接收消息）不花费时间。进程配备了时钟，因此它们可以测量本地超时。由于使用了公钥加密技术，因此假设欺骗/冒充攻击在任何时候都是不可能的，即我们假设所有协议消息都包含数字签名。因此，当正确的进程 ![]( http://latex.codecogs.com/svg.latex?q ) 从其对等方接收到签名消息 ![]( http://latex.codecogs.com/svg.latex?m ) 时，进程 ![]( http://latex.codecogs.com/svg.latex?q ) 可以验证谁是消息 ![]( http://latex.codecogs.com/svg.latex?m ) 的原始发送者以及消息签名是否有效。我们没有在算法的伪代码中明确说明签名验证步骤以提高可读性；我们假设在该级别仅考虑具有有效签名的消息（并且丢弃具有无效签名的消息）。
 
 ### B. 状态机副本(SMR)
 状态机复制 (SMR) 是一种复制服务的通用方法，被建模为确定性状态机 [[1]]( https://lamport.azurewebsites.net/pubs/time-clocks.pdf )、[[2]]( https://dl.acm.org/doi/pdf/10.1145/98163.98167 )。这种方法的关键思想是保证所有副本以相同的状态开始，然后以相同的顺序应用来自客户端的请求，从而保证副本的状态不会发散。在 Schneider [[2]]( https://dl.acm.org/doi/pdf/10.1145/98163.98167 ) 之后，我们注意到以下是实现状态机副本容忍（拜占庭）故障的关键：
@@ -53,7 +53,7 @@ Tendermint 共识算法的主要创新和贡献是一种新的***Termination***�
 
 此外，正如 Schneider 还指出的那样，该属性可以分解为两部分，***Agreement*** 和 ***Order***：***Agreement*** 要求所有（非故障）副本接收所有请求，而 ***Order*** 要求接收请求的顺序在所有副本中都相同。
 
-拜占庭容错状态机副本需要确保一个额外的要求：仅执行客户端提出的请求（在 Tendermint 术语中称为事务）。在 Tendermint 中，交易验证是被副本服务的责任；在收到来自客户端的交易后，Tendermint 进程会询问服务请求是否有效，并且只会处理有效的请求。
+拜占庭容错状态机副本需要确保一个额外的要求：仅执行客户端提出的请求（在 Tendermint 术语中称为事务）。在 Tendermint 中，交易验证是被复制服务的责任；在收到来自客户端的交易后，Tendermint 进程会询问服务请求是否有效，并且只会处理有效的请求。
 
 ### C. 共识
 Tendermint 通过顺序执行共识实例来解决状态机复制，以就每个事务块达成一致，然后由被复制的服务执行。我们考虑拜占庭共识问题的一个变体，称为基于有效性**断言**的拜占庭共识，它是由区块链系统驱动的 [[17]]( https://arxiv.org/pdf/1702.03068.pdf )。问题由***Agreement***、***Termination***和***Validity***定义。
@@ -61,7 +61,7 @@ Tendermint 通过顺序执行共识实例来解决状态机复制，以就每个
 - ***Termination***：所有正确的过程最终决定一个值。
 - ***Validity***：确定的值是有效的，即它满足表示为 ![]( http://latex.codecogs.com/svg.latex?valid() ) 的预定义**断言**
 
-拜占庭共识问题的这个变体有一个特定于应用程序的 ![]( http://latex.codecogs.com/svg.latex?valid() ) 谓词来指示一个值是否有效。例如，在区块链系统的上下文中，如果一个值不包含添加到区块链的最后一个值（区块）的适当散列，则它是无效的。
+拜占庭共识问题的这个变体有一个特定于应用程序的 ![]( http://latex.codecogs.com/svg.latex?valid() ) **断言**来指示一个值是否有效。例如，在区块链系统的上下文中，如果一个值不包含添加到区块链的最后一个值（区块）的适当散列，则它是无效的。
 
 ## III. TENDERMINT共识算法
 在本节中，我们将介绍 Tendermint 拜占庭容错共识算法。该算法由算法 1 中的伪代码列表指定。我们将该算法表示为一组原子执行的规则。我们假设进程使用 gossip 协议交换协议消息，并且接收和发送的消息都存储在每个进程的本地消息日志中。一旦消息日志包含相应条件评估为真的消息，就会触发 ***upon*** 规则。假设接收到 ![]( http://latex.codecogs.com/svg.latex?X ) 个特定类型和内容的消息的条件表示接收的消息的发送者的总投票权至少等于 ![]( http://latex.codecogs.com/svg.latex?X )。例如，条件 ![]( http://latex.codecogs.com/svg.latex?2f+1<PRECOMMIT,h_p,r,id(v)> ) , 在接收到高度 ![]( http://latex.codecogs.com/svg.latex?h_p )、一轮 ![]( http://latex.codecogs.com/svg.latex?r ) 且值等于 ![]( http://latex.codecogs.com/svg.latex?id(v) ) 的 ![]( http://latex.codecogs.com/svg.latex?PRECOMMIT ) 消息时评估为真，其发送者的总投票权至少等于 ![]( http://latex.codecogs.com/svg.latex?2f+1 )。一些规则以“第一次”结尾” 约束表示它仅在相应条件第一次评估为真时触发。这是因为这些规则并不总是改变算法变量的状态，所以没有这个约束，算法可以永远执行这些规则。具有索引 ![]( http://latex.codecogs.com/svg.latex?p ) 的变量是进程局部状态变量，而没有索引 ![]( http://latex.codecogs.com/svg.latex?p ) 的变量是值占位符。符号 ![]( http://latex.codecogs.com/svg.latex?* ) 表示任何值。
